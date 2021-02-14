@@ -50,7 +50,7 @@
 		</div>
 
 		<!-- Accept only sets correct format for browsing, user can still upload whatever they wish -->
-		<div class="zip-upload"><input type="file" accept=".application/zip" /></div>
+		<input id="zip-upload" type="file" accept="application/zip" />
 
 		<!-- DO NO REMOVE CODE STARTING HERE -->
 		<div class="display-wrapper">
@@ -62,4 +62,59 @@
 		</div>
 		<!-- DO NO REMOVE CODE UNTIL HERE -->
 	</body>
+
+	<script>
+		const zipUpload = document.getElementById("zip-upload");
+		zipUpload.onchange = async () => {
+			const file = zipUpload.files[0];
+
+			//Check if uploaded file is a zip
+			if (file.type !== "application/zip") {
+				zipUpload.value = "";
+				return alert("Please upload a ZIP");
+			}
+
+			//Read file and await decompression
+			const reader = new zip.ZipReader(new zip.BlobReader(file));
+			const entries = await reader.getEntries();
+
+			//Remove content from display div
+			const display = document.getElementsByClassName("append-images-here")[0];
+			while (display.firstChild) {
+				display.removeChild(display.firstChild);
+			}
+
+			var notAnImageErr = false;
+			for (var i in entries) {
+				//Assume well-formed filename with jpeg, jpg or png as extension
+				var ext = entries[i].filename.split(".")[1];
+				switch (ext) {
+					case "jpeg":
+					case "jpg":
+						ext = "jpeg";
+						break;
+					case "png":
+						ext = "png";
+						break;
+					default:
+						notAnImageErr = true;
+						continue; //Do not attempt to display non image
+				}
+
+				//Read data from entry
+				const data = await entries[i].getData(new zip.Data64URIWriter([`image/${ext}`]));
+				//Construct img element
+				const img = document.createElement("img");
+				img.classList.add("image-from-zip");
+				img.src = data;
+				//Display img
+				display.appendChild(img);
+			}
+
+			//If one or more files not an image, alert user
+			if (notAnImageErr) {
+				alert("ZIP should only contain images.");
+			}
+		};
+	</script>
 </html>
